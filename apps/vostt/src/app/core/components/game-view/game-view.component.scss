@@ -1,0 +1,12 @@
+:host {
+    display: block;
+    min-width: 500px;
+    min-height: 500px;
+    height: calc(100% - var(--vostt-header-height));
+    width: 100%;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+}

@@ -1,0 +1,9 @@
+:host {
+    display: block;
+    width: 100%;
+    height: var(--vostt-header-height);
+    background-color: var(--vostt-primary-color);
+    color: white;
+    position: sticky;
+    top: 0px;
+}
