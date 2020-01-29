@@ -1,5 +1,7 @@
 import { WebGLRenderer, Scene, PerspectiveCamera, Clock, MOUSE } from 'three';
 import { OrbitControls } from './controls/orbit-controls';
+import { Entity } from './entity';
+import { World, NaiveBroadphase } from 'cannon';
 
 export class Engine {
     public canvas: HTMLCanvasElement;
@@ -7,7 +9,9 @@ export class Engine {
     public scene: Scene;
     public camera: PerspectiveCamera;
     public cameraControls: OrbitControls;
+    public physicsWorld: World;
 
+    private entities: Entity[] = [];
     private clock: Clock;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -32,15 +36,29 @@ export class Engine {
             RIGHT: MOUSE.ROTATE,
         };
 
+        this.physicsWorld = new World();
+        this.physicsWorld.gravity.set(0, -9.82, 0);
+        this.physicsWorld.broadphase = new NaiveBroadphase();
+
         this.clock = new Clock();
     }
 
     public render() {
+        const deltaTime = this.clock.getDelta();
+        this.physicsWorld.step(1 / 60, deltaTime, 10);
+
+        for (const entity of this.entities) {
+            const position = entity.rigidBody.position;
+            const rotation = entity.rigidBody.quaternion;
+            entity.mesh.position.set(position.x, position.y, position.z);
+            entity.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+        }
+
+        this.cameraControls.update();
+        this.renderer.render(this.scene, this.camera);
         requestAnimationFrame(() => {
             this.render();
         });
-        this.cameraControls.update();
-        this.renderer.render(this.scene, this.camera);
     }
 
     public updateSize(width: number, height: number) {
@@ -48,5 +66,12 @@ export class Engine {
         this.renderer.setSize(width, height, false);
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
+    }
+
+    public addEntity(entity: Entity) {
+        entity.initialize();
+        this.physicsWorld.addBody(entity.rigidBody);
+        this.scene.add(entity.mesh);
+        this.entities.push(entity);
     }
 }

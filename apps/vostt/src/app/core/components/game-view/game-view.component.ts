@@ -2,6 +2,10 @@ import { Component, AfterViewInit, ElementRef, ViewChild, NgZone, OnDestroy } fr
 import { MeshBasicMaterial, Mesh, TextureLoader, PlaneBufferGeometry, BoxGeometry, Color, MeshPhongMaterial, HemisphereLight } from 'three';
 import ResizeObserver from 'resize-observer-polyfill';
 import { Engine } from '../../../game-engine/engine';
+import { loadTexture } from '../../../game-engine/loaders';
+import { GroundEntity } from '../../../game-engine/entities/ground';
+import { CubeEntity } from '../../../game-engine/entities/cube';
+import { Vec3 } from 'cannon';
 
 @Component({
     selector: 'vostt-game-view',
@@ -24,35 +28,29 @@ export class GameViewComponent implements AfterViewInit, OnDestroy {
 
     ngAfterViewInit(): void {
         this.engine = new Engine(this.canvas.nativeElement);
-        const scene = this.engine.scene;
-        const camera = this.engine.camera;
+        this.initializeEngine();
+        this.observeResize();
+    }
 
-        const loader = new TextureLoader();
+    async initializeEngine() {
+        this.ngZone.runOutsideAngular(async () => {
+            const scene = this.engine.scene;
+            const camera = this.engine.camera;
 
-        const mapMaterial = new MeshBasicMaterial({
-            map: loader.load('https://s3.amazonaws.com/files.d20.io/images/62023364/rYcPCpvkAW1Jz1MZefsipg/original.png?153612345955',
-            (texture) => {
-                const mapGeometry = new PlaneBufferGeometry(texture.image.width, texture.image.height);
-                const mapMesh = new Mesh(mapGeometry, mapMaterial);
-                mapMesh.rotation.set(-(Math.PI) / 2, 0, 0);
-                scene.add(mapMesh);
-            }),
-        });
+            const mapTexture = await loadTexture('https://s3.amazonaws.com/files.d20.io/images/62023364/rYcPCpvkAW1Jz1MZefsipg/original.png?153612345955');
+            this.engine.addEntity(new GroundEntity(mapTexture));
+            const cube = new CubeEntity();
+            this.engine.addEntity(cube);
+            cube.setPosition(0, 1, 0);
+            cube.setRotation(Math.PI / 4, Math.PI / 4, 0);
+            cube.rigidBody.applyImpulse(new Vec3(70, -100, 25), new Vec3(0, 0, 0));
 
-        const die = new Mesh(new BoxGeometry(10, 10, 10), new MeshPhongMaterial({ color: new Color('red')}));
-        die.position.set(0, 20, 0);
-        die.rotation.set(Math.PI / 4, 0, 0);
-        scene.add(die);
+            const light = new HemisphereLight('white', 'brown');
+            scene.add(light);
 
-        const light = new HemisphereLight('white', 'brown');
-        scene.add(light);
-
-        camera.position.set(0, 400, 200);
-        this.ngZone.runOutsideAngular(() => {
+            camera.position.set(1, 1, 1);
             this.engine.render();
         });
-
-        this.observeResize();
     }
 
     observeResize() {
